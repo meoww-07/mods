@@ -25,6 +25,22 @@ function getTodaysClasses(timetable) {
     })
     .filter(Boolean);
 }
+function getTomorrowClasses(timetable) {
+  const jsDay = dayjs().day()+1; // 0=Sun, 1=Mon, ..., 6=Sat
+  if (jsDay === 0) return []; // no classes on sunday
+
+  const dayIndex = jsDay - 1; // Monday=0
+
+  return timetable
+    .filter(slot => !slot.isBreak)
+    .map(slot => {
+      const cls = slot.schedule[dayIndex];
+      if (!cls) return null;
+      const [startTime, endTime] = slot.timeSlot.split(' - ');
+      return { ...cls, startTime, endTime };
+    })
+    .filter(Boolean);
+}
 
 // for which class is live
 function useClassStatuses(timetable) {
@@ -71,8 +87,10 @@ function TodayClassCard({ data }) {
 function Dashboard() {
   const todaysClasses = getTodaysClasses(weeklyTimetableMock);
   const classesWithStatus = useClassStatuses(todaysClasses);
-
+  const tomorrowClasses = getTomorrowClasses(weeklyTimetableMock);
+  const classesWithStatus2 = useClassStatuses(tomorrowClasses);
   return (
+    <>
     <div className="dashboard">
       <h1>Today's Schedule</h1>
       <br/>
@@ -86,6 +104,22 @@ function Dashboard() {
           ))}
         </div>)}
     </div>
+    <br></br>
+    <br></br>
+    <div className="dashboard">
+      <h1>Tomorrow's Schedule</h1>
+      <br/>
+      <h3 className=''> {tomorrowClasses.length} Classes Scheduled </h3><br/><br/>
+
+      {tomorrowClasses.length === 0 ? 
+        (<p>No classes today 🎉</p>)
+        :(<div className="today-schedule-row">
+          {classesWithStatus2.map((cls) => (
+            <TodayClassCard data={cls} />
+          ))}
+        </div>)}
+    </div>
+    </>
   );
 }
 
