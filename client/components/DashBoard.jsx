@@ -112,9 +112,9 @@ function Dashboard() {
       <h3 className=''> {tomorrowClasses.length} Classes Scheduled </h3><br/><br/>
 
       {tomorrowClasses.length === 0 ? 
-        (<p>No classes today 🎉</p>)
+        (<p>No classes Tomorrow 🎉</p>)
         :(<div className="today-schedule-row">
-          {classesWithStatus2.map((cls) => (
+          {tomorrowClasses.map((cls) => (
             <TodayClassCard data={cls} />
           ))}
         </div>)}
