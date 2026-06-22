@@ -41,6 +41,7 @@ export default function SignUp() {
     } finally {
       setLoading(false);
     }
+    setLoading(false)
   };
 
   return (
