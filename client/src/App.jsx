@@ -30,7 +30,7 @@ function App() {
 
   return (
     <>
-      <div className="webpage">
+      <div className={`webpage ${navBar ? 'nav-open' : ''}`}>
         <aside className={`navbar ${navBar ? 'open' : ''}`}>
           <div id="head">
             <h1>IIIT<span className="gold">Surat</span><span className="teal">Mods</span></h1>
@@ -53,20 +53,25 @@ function App() {
             )}
           </ul>
         </aside>
+        {navBar && <button className="nav-backdrop" type="button" aria-label="Close menu" onClick={() => setNavBar(false)} />}
         <main className="main-content">
           <Notifications />
           <button
             className="menu-toggle-btn"
             onClick={() => setNavBar(!navBar)}
             aria-label={navBar ? 'Close menu' : 'Open menu'}
+            aria-expanded={navBar}
           >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
             {navBar ? '✕' : '≡'}
           </button>
           <Routes>
             <Route path='/admin' element={<Admin />} />
             <Route path='/profile' element={<Profile />} />
             <Route path='/login' element={<Login />} />
-            <Route path='/timetable' element={<TimeTable year={"2025-26"} semester={"2nd"} section={"Cse 2"} />} />
+            <Route path='/timetable' element={<TimeTable year={"2025-26"} />} />
             <Route path='/venues' element={<Venues />} />
             <Route path='/academics' element={<Academics />} />
             <Route path='/dashboard' element={<DashBoard />} />

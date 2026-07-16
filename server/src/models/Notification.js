@@ -17,6 +17,21 @@ const notificationSchema = new mongoose.Schema(
       enum: ["all", "cse", "ece", "mtech", "admins"],
       default: "all"
     },
+    eventType: {
+      type: String,
+      enum: ["club", "other"],
+      default: "other"
+    },
+    venueName: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    eventDurationMinutes: {
+      type: Number,
+      default: 60,
+      min: 15
+    },
     eventAt: {
       type: Date,
       default: null
@@ -38,7 +53,7 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-notificationSchema.index({ isActive: 1, expiresAt: 1, eventAt: 1 });
+notificationSchema.index({ isActive: 1, eventType: 1, venueName: 1, expiresAt: 1, eventAt: 1 });
 
 const Notification = mongoose.model("Notification", notificationSchema);
 

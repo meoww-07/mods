@@ -8,8 +8,10 @@ const emptyNotice = {
   title: "",
   message: "",
   audience: "all",
+  eventType: "other",
+  venueName: "",
+  eventDurationMinutes: 60,
   eventAt: "",
-  expiresAt: "",
   isActive: true
 };
 
@@ -21,11 +23,20 @@ const audienceLabels = {
   admins: "Admins"
 };
 
+const eventTypeLabels = {
+  club: "Club event",
+  other: "Other"
+};
+
+const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const toTimeValue = (date) => `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
 export default function Admin() {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [venues, setVenues] = useState([]);
   const [notice, setNotice] = useState(emptyNotice);
   const [filter, setFilter] = useState({ day: "", roomNo: "", batch: "" });
   const [editingId, setEditingId] = useState(null);
@@ -33,24 +44,83 @@ export default function Admin() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [availability, setAvailability] = useState({ status: "idle", text: "" });
 
   const isAdmin = user?.role === "admin";
+  const classroomVenues = venues.filter((venue) => venue.type === "classroom");
 
   const loadAdminData = useCallback(async () => {
-    const [summaryResponse, scheduleResponse, notificationResponse] = await Promise.all([
+    const [summaryResponse, scheduleResponse, notificationResponse, venueResponse] = await Promise.all([
       api.get("/admin/summary"),
       api.get("/admin/schedules", { params: filter }),
-      api.get("/notifications/admin")
+      api.get("/notifications/admin"),
+      api.get("/venues")
     ]);
     setSummary(summaryResponse.data);
     setSchedules(scheduleResponse.data.schedules || []);
     setNotifications(notificationResponse.data.notifications || []);
+    setVenues(venueResponse.data.venues || []);
   }, [filter]);
 
   useEffect(() => {
     if (!isAdmin) return;
     loadAdminData().catch(() => setError("Unable to load admin data"));
   }, [isAdmin, loadAdminData]);
+
+  useEffect(() => {
+    if (notice.eventType !== "club") {
+      setAvailability({ status: "idle", text: "" });
+      return;
+    }
+
+    if (!notice.venueName || !notice.eventAt || !notice.eventDurationMinutes) {
+      setAvailability({ status: "idle", text: "Select a classroom, date, time, and duration to check availability." });
+      return;
+    }
+
+    const eventDate = new Date(notice.eventAt);
+    if (Number.isNaN(eventDate.getTime())) {
+      setAvailability({ status: "unavailable", text: "Choose a valid event date and time." });
+      return;
+    }
+
+    const duration = Number(notice.eventDurationMinutes);
+    if (!Number.isFinite(duration) || duration < 15) {
+      setAvailability({ status: "unavailable", text: "Duration must be at least 15 minutes." });
+      return;
+    }
+
+    let cancelled = false;
+    setAvailability({ status: "checking", text: "Checking classroom availability..." });
+
+    api
+      .get("/venues/free", {
+        params: {
+          day: dayNames[eventDate.getDay()],
+          time: toTimeValue(eventDate),
+          duration
+        }
+      })
+      .then((response) => {
+        if (cancelled) return;
+        const rooms = response.data.rooms || [];
+        const isAvailable = rooms.some((room) => room.name === notice.venueName);
+        setAvailability({
+          status: isAvailable ? "available" : "unavailable",
+          text: isAvailable
+            ? `${notice.venueName} is available for this club event.`
+            : `${notice.venueName} is already occupied at this time.`
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAvailability({ status: "unavailable", text: "Unable to check availability right now." });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notice.eventType, notice.venueName, notice.eventAt, notice.eventDurationMinutes]);
 
   const flash = (text) => {
     setMessage(text);
@@ -66,8 +136,10 @@ export default function Admin() {
     try {
       await api.post("/notifications", {
         ...notice,
+        venueName: notice.eventType === "club" ? notice.venueName : "",
+        eventDurationMinutes: notice.eventType === "club" ? Number(notice.eventDurationMinutes || 60) : 60,
         eventAt: notice.eventAt || null,
-        expiresAt: notice.expiresAt || null
+        expiresAt: null
       });
       setNotice(emptyNotice);
       await loadAdminData();
@@ -232,25 +304,80 @@ export default function Admin() {
           </label>
 
           <div className="admin-field-row">
+            <label className="admin-field admin-field--gold">
+              EVENT TYPE
+              <select
+                value={notice.eventType}
+                onChange={(event) =>
+                  setNotice({
+                    ...notice,
+                    eventType: event.target.value,
+                    venueName: event.target.value === "club" ? notice.venueName : "",
+                    eventDurationMinutes: event.target.value === "club" ? notice.eventDurationMinutes : 60
+                  })
+                }
+              >
+                {Object.entries(eventTypeLabels).map(([value, label]) => (
+                  <option value={value} key={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {notice.eventType === "club" && (
+              <label className="admin-field admin-field--teal">
+                CLASSROOM
+                <select
+                  value={notice.venueName}
+                  onChange={(event) => setNotice({ ...notice, venueName: event.target.value })}
+                  required
+                >
+                  <option value="">Select classroom</option>
+                  {classroomVenues.map((venue) => (
+                    <option value={venue.name} key={venue.name}>
+                      {venue.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+
+          <div className="admin-field-row">
             <label className="admin-field admin-field--lime">
-              EVENT DATE
+              EVENT DATE & TIME
               <input
                 type="datetime-local"
                 value={notice.eventAt}
                 onChange={(event) => setNotice({ ...notice, eventAt: event.target.value })}
+                required={notice.eventType === "club"}
               />
             </label>
-            <label className="admin-field admin-field--coral">
-              EXPIRES
-              <input
-                type="datetime-local"
-                value={notice.expiresAt}
-                onChange={(event) => setNotice({ ...notice, expiresAt: event.target.value })}
-              />
-            </label>
+            {notice.eventType === "club" && (
+              <label className="admin-field admin-field--coral">
+                DURATION (MIN)
+                <input
+                  type="number"
+                  min="15"
+                  step="15"
+                  value={notice.eventDurationMinutes}
+                  onChange={(event) => setNotice({ ...notice, eventDurationMinutes: event.target.value })}
+                  required
+                />
+              </label>
+            )}
           </div>
 
-          <button type="submit" className="admin-publish-btn" disabled={publishing}>
+          {notice.eventType === "club" && availability.text && (
+            <p className={`admin-availability admin-availability--${availability.status}`}>{availability.text}</p>
+          )}
+
+          <button
+            type="submit"
+            className="admin-publish-btn"
+            disabled={publishing || (notice.eventType === "club" && availability.status !== "available")}
+          >
             {publishing ? "PUBLISHING..." : "PUBLISH TO USERS"}
           </button>
         </form>
@@ -268,10 +395,12 @@ export default function Admin() {
                       {item.isActive ? "LIVE" : "HIDDEN"}
                     </span>
                     <span className="audience-chip">{audienceLabels[item.audience] || item.audience}</span>
+                    <span className="audience-chip">{eventTypeLabels[item.eventType] || "Other"}</span>
+                    {item.eventType === "club" && item.venueName && <span className="audience-chip">{item.venueName}</span>}
                   </div>
                   <span>{item.message}</span>
                   {item.eventAt && <time>Event: {new Date(item.eventAt).toLocaleString()}</time>}
-                  {item.expiresAt && <time>Expires: {new Date(item.expiresAt).toLocaleString()}</time>}
+                  {item.eventType === "club" && <time>Duration: {item.eventDurationMinutes || 60} minutes</time>}
                 </div>
                 <div className="row-actions">
                   <button type="button" onClick={() => toggleNotification(item)}>

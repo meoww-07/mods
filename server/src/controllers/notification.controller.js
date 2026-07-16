@@ -1,9 +1,49 @@
 import Notification from "../models/Notification.js";
+import Venue from "../models/Venue.js";
 
-const notificationFields = ["title", "message", "audience", "eventAt", "expiresAt", "isActive"];
+const notificationFields = [
+  "title",
+  "message",
+  "audience",
+  "eventType",
+  "venueName",
+  "eventDurationMinutes",
+  "eventAt",
+  "expiresAt",
+  "isActive"
+];
 
 const pickNotificationFields = (body) =>
   Object.fromEntries(notificationFields.filter((field) => body[field] !== undefined).map((field) => [field, body[field]]));
+
+const validateClubEvent = async (fields, res) => {
+  if (fields.eventType !== "club") return true;
+
+  if (!fields.venueName) {
+    res.status(400).json({ message: "Choose a classroom for club events" });
+    return false;
+  }
+
+  if (!fields.eventAt) {
+    res.status(400).json({ message: "Choose an event date for club events" });
+    return false;
+  }
+
+  const duration = Number(fields.eventDurationMinutes || 60);
+  if (!Number.isFinite(duration) || duration < 15) {
+    res.status(400).json({ message: "Choose a valid club event duration" });
+    return false;
+  }
+  fields.eventDurationMinutes = duration;
+
+  const venue = await Venue.findOne({ name: fields.venueName }).lean();
+  if (venue && venue.type !== "classroom") {
+    res.status(400).json({ message: "Club events can only reserve classrooms" });
+    return false;
+  }
+
+  return true;
+};
 
 export const listPublicNotifications = async (req, res) => {
   const now = new Date();
@@ -24,12 +64,27 @@ export const listNotifications = async (req, res) => {
 };
 
 export const createNotification = async (req, res) => {
-  const notification = await Notification.create({ ...pickNotificationFields(req.body), createdBy: req.user._id });
+  const fields = pickNotificationFields(req.body);
+  if (fields.eventType !== "club") {
+    fields.venueName = "";
+    fields.eventDurationMinutes = 60;
+  }
+  fields.expiresAt = null;
+  if (!(await validateClubEvent(fields, res))) return;
+
+  const notification = await Notification.create({ ...fields, createdBy: req.user._id });
   res.status(201).json({ message: "Notification created", notification });
 };
 
 export const updateNotification = async (req, res) => {
-  const notification = await Notification.findByIdAndUpdate(req.params.id, pickNotificationFields(req.body), {
+  const fields = pickNotificationFields(req.body);
+  if (fields.eventType && fields.eventType !== "club") {
+    fields.venueName = "";
+    fields.eventDurationMinutes = 60;
+  }
+  if (!(await validateClubEvent(fields, res))) return;
+
+  const notification = await Notification.findByIdAndUpdate(req.params.id, fields, {
     new: true,
     runValidators: true
   });

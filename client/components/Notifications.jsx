@@ -20,6 +20,7 @@ export default function Notifications() {
         <article className="notice-item" key={notification._id}>
           <strong>{notification.title}</strong>
           <span>{notification.message}</span>
+          {notification.eventType === "club" && notification.venueName && <span>Venue: {notification.venueName}</span>}
           {notification.eventAt && <time>{new Date(notification.eventAt).toLocaleString()}</time>}
         </article>
       ))}

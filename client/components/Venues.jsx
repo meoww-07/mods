@@ -3,6 +3,10 @@ import api from "../src/api";
 import "./styling/venues.css";
 
 const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const getDefaultDay = () => {
+  const currentDay = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  return days.includes(currentDay) ? currentDay : "monday";
+};
 
 const toMinutes = (time) => {
   const [hours, minutes] = String(time).split(":").map(Number);
@@ -33,7 +37,7 @@ const localVenueSchedules = (seed, venueName) =>
   (seed.schedules || [])
     .filter((slot) => slot.roomNo === venueName && !slot.isCancelled)
     .map((slot, index) => ({ ...slot, _id: `${slot.source}-${slot.dayOfWeek}-${slot.startTime}-${index}` }))
-    .sort((a, b) => a.dayOfWeek.localeCompare(b.dayOfWeek) || a.startMinutes - b.startMinutes);
+    .sort((a, b) => days.indexOf(a.dayOfWeek) - days.indexOf(b.dayOfWeek) || a.startMinutes - b.startMinutes);
 
 const localFreeRooms = (seed, params) => {
   const start = toMinutes(params.time);
@@ -55,14 +59,13 @@ const localFreeRooms = (seed, params) => {
     .map((venue) => ({ ...venue, freeFrom: formatMinutes(start), freeUntil: formatMinutes(end) }));
 };
 
-function ScheduleList({ schedules }) {
-  if (!schedules.length) return <p className="muted">No scheduled classes found for this venue.</p>;
+function ScheduleList({ schedules, day }) {
+  if (!schedules.length) return <p className="muted">No scheduled classes found for this venue on {day}.</p>;
 
   return (
     <div className="venue-schedule">
       {schedules.map((slot) => (
         <article className="schedule-row" key={slot._id}>
-          <span>{slot.dayOfWeek}</span>
           <span>
             {slot.startTime} - {slot.endTime}
           </span>
@@ -103,7 +106,7 @@ export default function Venues() {
   const [venues, setVenues] = useState([]);
   const [selected, setSelected] = useState(null);
   const [selectedSchedules, setSelectedSchedules] = useState([]);
-  const [freeParams, setFreeParams] = useState({ day: "monday", time: "09:00", duration: 60 });
+  const [freeParams, setFreeParams] = useState({ day: getDefaultDay(), time: "09:00", duration: 60 });
   const [freeRooms, setFreeRooms] = useState([]);
   const [hasSearchedRooms, setHasSearchedRooms] = useState(false);
   const [message, setMessage] = useState("");
@@ -112,6 +115,14 @@ export default function Venues() {
   const filteredFreeRooms = useMemo(
     () => freeRooms.filter((room) => room.name.toLowerCase().includes(query.toLowerCase())),
     [freeRooms, query]
+  );
+
+  const selectedDaySchedules = useMemo(
+    () =>
+      selectedSchedules
+        .filter((slot) => slot.dayOfWeek === freeParams.day)
+        .sort((a, b) => a.startMinutes - b.startMinutes),
+    [selectedSchedules, freeParams.day]
   );
 
   useEffect(() => {
@@ -265,12 +276,12 @@ export default function Venues() {
             <>
               <h2>{selected.name}</h2>
               <p>{selected.notes || "Imported from timetable data."}</p>
-              <ScheduleList schedules={selectedSchedules} />
+              <ScheduleList schedules={selectedDaySchedules} day={freeParams.day} />
             </>
           ) : (
             <div className="detail-empty">
               <div className="detail-icon">🏛</div>
-              <p className="detail-title">Select a venue to view its weekly usage.</p>
+              <p className="detail-title">Select a venue to view classes for the chosen day.</p>
               <p className="detail-hint">Tap any room card on the left.</p>
             </div>
           )}

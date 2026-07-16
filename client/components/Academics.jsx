@@ -57,6 +57,150 @@ const lineLooksLikeCourse = (line) =>
   /\b(L|T|P|C|Credits?)\b/i.test(line) ||
   /\b(Mathematics|Programming|Circuit|Data|Signals|Algorithm|Communication|Electronics|Physics|Project|Laboratory|Design)\b/i.test(line);
 
+const SUBJECT_HEADER_RE = /^([A-Z]{2,4}\s?-?\s?\d{3,4}[A-Z]?)\s*:\s*(.+?)(?:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+))?$/;
+const UNIT_RE = /^(?:Unit\s*[–-]?\s*\d+\s*:?\s*)?(.+?)\s+(\d+)\s+Hours?$/i;
+const BOOK_SECTION_RE = /^(Recommended Books|Reference Books|Text-?Books?|Text Books?)$/i;
+const CONTACT_RE = /^Total Contact (?:Time|Hours).*?:?\s*(\d+)\s+Hours?$/i;
+
+const parseSubjectSyllabus = (lines) => {
+  const subjects = [];
+  let current = null;
+  let activeBookSection = "";
+
+  const ensureCurrent = () => {
+    if (!current) {
+      current = { code: "", name: "Syllabus", credits: null, units: [], books: [], notes: [], contactHours: "" };
+      subjects.push(current);
+    }
+    return current;
+  };
+
+  const appendToLastUnit = (text) => {
+    const subject = ensureCurrent();
+    if (!subject.units.length) {
+      subject.notes.push(text);
+      return;
+    }
+    const lastUnit = subject.units[subject.units.length - 1];
+    lastUnit.details = `${lastUnit.details} ${text}`.trim();
+  };
+
+  lines.forEach((rawLine) => {
+    const line = String(rawLine || "").replace(/\s+/g, " ").trim();
+    if (!line) return;
+    if (/^B\.?\s?Tech/i.test(line) && !SUBJECT_HEADER_RE.test(line)) return;
+
+    const subjectHeader = line.match(SUBJECT_HEADER_RE);
+    if (subjectHeader) {
+      const [, code, name, l, t, p, c] = subjectHeader;
+      current = {
+        code: code.replace(/\s+/g, " ").trim(),
+        name: name.replace(/\s+\d+\s+\d+\s+\d+\s+\d+$/, "").trim(),
+        credits: c ? { l, t, p, c } : null,
+        units: [],
+        books: [],
+        notes: [],
+        contactHours: ""
+      };
+      subjects.push(current);
+      activeBookSection = "";
+      return;
+    }
+
+    const contact = line.match(CONTACT_RE);
+    if (contact && current) {
+      current.contactHours = contact[1];
+      activeBookSection = "";
+      return;
+    }
+
+    if (BOOK_SECTION_RE.test(line)) {
+      activeBookSection = line;
+      return;
+    }
+
+    if (activeBookSection || /^\d+\.\s/.test(line)) {
+      ensureCurrent().books.push(line.replace(/^\d+\.\s*/, ""));
+      return;
+    }
+
+    const unit = line.match(UNIT_RE);
+    if (unit) {
+      ensureCurrent().units.push({ title: unit[1].trim(), hours: unit[2], details: "" });
+      activeBookSection = "";
+      return;
+    }
+
+    appendToLastUnit(line);
+  });
+
+  return subjects.filter((subject) => subject.code || subject.units.length || subject.books.length);
+};
+
+function SubjectSyllabus({ subjects }) {
+  return (
+    <div className="subject-syllabus">
+      {subjects.map((subject, index) => (
+        <article className="subject-card" key={`${subject.code || subject.name}-${index}`}>
+          <div className="subject-card__header">
+            <div>
+              {subject.code && <span className="subject-code">{subject.code}</span>}
+              <h4>{subject.name}</h4>
+            </div>
+            {subject.credits && (
+              <div className="credit-pills" aria-label="L T P C">
+                <span>L {subject.credits.l}</span>
+                <span>T {subject.credits.t}</span>
+                <span>P {subject.credits.p}</span>
+                <span>C {subject.credits.c}</span>
+              </div>
+            )}
+          </div>
+
+          {subject.units.length > 0 && (
+            <div className="unit-list">
+              {subject.units.map((unit, unitIndex) => (
+                <section className="unit-card" key={`${subject.code}-${unit.title}-${unitIndex}`}>
+                  <div className="unit-card__heading">
+                    <strong>Unit {unitIndex + 1}</strong>
+                    <span>{unit.hours} hours</span>
+                  </div>
+                  <h5>{unit.title}</h5>
+                  {unit.details && <p>{unit.details}</p>}
+                </section>
+              ))}
+            </div>
+          )}
+
+          {subject.notes.length > 0 && (
+            <div className="subject-notes">
+              {subject.notes.map((note, noteIndex) => (
+                <p key={`${subject.code}-note-${noteIndex}`}>{note}</p>
+              ))}
+            </div>
+          )}
+
+          {(subject.contactHours || subject.books.length > 0) && (
+            <div className="subject-footer">
+              {subject.contactHours && <span className="contact-hours">Total contact time: {subject.contactHours} hours</span>}
+              {subject.books.length > 0 && (
+                <details>
+                  <summary>Books and references</summary>
+                  <ol>
+                    {subject.books.map((book, bookIndex) => (
+                      <li key={`${subject.code}-book-${bookIndex}`}>{book}</li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function CourseTable({ section }) {
   return (
     <div className="semester-block">
@@ -110,6 +254,7 @@ function CourseTable({ section }) {
 function BulletBlock({ title, item, textEntry }) {
   const bullets = textEntry?.bullets || [];
   const parsed = useMemo(() => parseCurriculum(bullets), [bullets]);
+  const subjectSyllabus = useMemo(() => parseSubjectSyllabus(bullets), [bullets]);
   const preferred = bullets.filter(lineLooksLikeCourse);
   const visibleBullets = (preferred.length >= 8 ? preferred : bullets).slice(0, 140);
 
@@ -134,6 +279,8 @@ function BulletBlock({ title, item, textEntry }) {
 
       {showTables ? (
         parsed.sections.map((section) => <CourseTable section={section} key={section.title} />)
+      ) : subjectSyllabus.length >= 2 ? (
+        <SubjectSyllabus subjects={subjectSyllabus} />
       ) : visibleBullets.length ? (
         <ul className="curriculum-list">
           {visibleBullets.map((line, index) => (

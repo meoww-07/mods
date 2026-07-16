@@ -288,6 +288,148 @@
   font-weight: 600;
 }
 
+.subject-syllabus {
+  display: grid;
+  gap: 18px;
+}
+
+.subject-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.subject-card__header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.subject-code {
+  color: var(--gold);
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.subject-card h4 {
+  color: var(--heading);
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.credit-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.credit-pills span,
+.contact-hours {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--teal);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 6px 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.unit-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.unit-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.unit-card__heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.unit-card__heading strong {
+  color: var(--lime);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.unit-card__heading span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.unit-card h5 {
+  color: var(--heading);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.unit-card p,
+.subject-notes p,
+.subject-footer li {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.subject-notes {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.subject-footer {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+.subject-footer details {
+  color: var(--text);
+}
+
+.subject-footer summary {
+  color: var(--gold);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.subject-footer ol {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0 20px;
+  padding: 0;
+}
+
 @media (max-width: 760px) {
   .academics-page {
     padding: 32px 20px;
@@ -306,5 +448,13 @@
   .academics-header input {
     min-width: 0;
     width: 100%;
+  }
+
+  .subject-card__header {
+    display: grid;
+  }
+
+  .credit-pills {
+    justify-content: flex-start;
   }
 }

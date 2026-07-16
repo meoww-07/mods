@@ -90,6 +90,16 @@
   grid-template-columns: minmax(820px, 1fr) var(--sidebar-w);
 }
 
+.schedule-empty {
+  background: var(--schedule-surface);
+  border: 1px solid #35302b;
+  border-radius: var(--radius);
+  color: var(--schedule-muted);
+  font-size: 18px;
+  line-height: 1.5;
+  padding: 22px 24px;
+}
+
 .schedule-grid-wrap {
   min-width: 0;
   overflow-x: auto;

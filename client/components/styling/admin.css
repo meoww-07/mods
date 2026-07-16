@@ -54,6 +54,11 @@
   font-weight: 600;
 }
 
+.admin-page .admin-split {
+  align-items: start;
+  gap: 24px;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr);
+}
 .admin-page .metric-tile--lime {
   background: var(--lime);
   color: var(--lime-text);
@@ -77,6 +82,8 @@
 /* Notification composer */
 .admin-page .admin-form {
   border-top-color: var(--gold);
+  margin-bottom: 0;
+  width: 100%;
 }
 
 .admin-field {
@@ -86,6 +93,7 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 3px;
+  min-width: 0;
 }
 
 .admin-field--gold { color: var(--gold); }
@@ -100,6 +108,7 @@
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 14px;
+  box-sizing: border-box;
   color: var(--text);
   font-size: 15px;
   font-weight: 400;
@@ -107,6 +116,7 @@
   min-height: 52px;
   outline: none;
   padding: 15px 18px;
+  width: 100%;
 }
 
 .admin-field input:focus,
@@ -129,7 +139,7 @@
 .admin-field-row {
   display: grid;
   gap: 14px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .admin-publish-btn {
@@ -154,6 +164,31 @@
   opacity: 0.6;
 }
 
+.admin-availability {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+  padding: 14px 16px;
+}
+
+.admin-availability--available {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
+.admin-availability--unavailable {
+  border-color: var(--coral);
+  color: var(--coral);
+}
+
+.admin-availability--checking {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 /* Notification rows */
 .notification-row__top {
   align-items: center;
@@ -161,6 +196,11 @@
   flex-direction: row !important;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.notification-row strong,
+.notification-row span {
+  overflow-wrap: anywhere;
 }
 
 .status-chip,
@@ -211,13 +251,17 @@
   padding: 2px 8px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1180px) {
+  .admin-page .admin-split {
+    grid-template-columns: 1fr;
+  }
+
   .admin-page .admin-metrics {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .admin-page .admin-metrics,
   .admin-field-row {
     grid-template-columns: 1fr;

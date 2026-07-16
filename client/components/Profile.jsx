@@ -38,6 +38,7 @@ export default function Profile() {
 
       if (response.data.user) {
         setUser(response.data.user);
+        localStorage.setItem("userProfile", JSON.stringify(response.data.user));
         setFormData({
           username: response.data.user.username,
           batch: response.data.user.batch,
@@ -77,13 +78,24 @@ export default function Profile() {
       setSaving(true);
       setError("");
 
-      await api.put("/auth/user/update", {
+      const response = await api.put("/auth/user/update", {
         username: formData.username,
         batch: formData.batch,
         semester: formData.semester
       });
 
-      await fetchUserData();
+      if (response.data.user) {
+        setUser(response.data.user);
+        localStorage.setItem("userProfile", JSON.stringify(response.data.user));
+        setFormData({
+          username: response.data.user.username,
+          batch: response.data.user.batch,
+          semester: response.data.user.semester
+        });
+      } else {
+        await fetchUserData();
+      }
+
       setIsEditing(false);
       setSuccess("Profile updated successfully!");
       setTimeout(() => setSuccess(""), 3000);

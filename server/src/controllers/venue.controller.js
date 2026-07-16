@@ -1,6 +1,10 @@
 import ClassSchedule from "../models/ClassSchedule.js";
+import Notification from "../models/Notification.js";
 import Venue from "../models/Venue.js";
 import { days, formatMinutes, overlaps, parseTimeToMinutes } from "../utils/time.js";
+
+const jsDayToName = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const dateToMinutes = (date) => date.getHours() * 60 + date.getMinutes();
 
 const buildVenueFallbacks = async () => {
   const rooms = await ClassSchedule.distinct("roomNo", { isCancelled: false });
@@ -46,6 +50,26 @@ export const findFreeRooms = async (req, res) => {
   const busyRooms = new Set(
     schedules.filter((slot) => overlaps(slot.startMinutes, slot.endMinutes, start, end)).map((slot) => slot.roomNo)
   );
+  const now = new Date();
+  const clubEvents = await Notification.find({
+    eventType: "club",
+    venueName: { $ne: "" },
+    isActive: true,
+    eventAt: { $ne: null },
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }]
+  }).lean();
+
+  clubEvents.forEach((event) => {
+    const eventStart = new Date(event.eventAt);
+    const duration = Number(event.eventDurationMinutes || 60);
+    const eventEnd = new Date(eventStart.getTime() + duration * 60 * 1000);
+
+    if (eventEnd <= now) return;
+    if (jsDayToName[eventStart.getDay()] !== dayOfWeek) return;
+    if (overlaps(dateToMinutes(eventStart), dateToMinutes(eventEnd), start, end)) {
+      busyRooms.add(event.venueName);
+    }
+  });
 
   const rooms = venues
     .filter((venue) => !busyRooms.has(venue.name))
